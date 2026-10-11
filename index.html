@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0709">
+<title>宫斗生存测试</title>
+<style>
+  :root{
+    --ink:#0b0709;
+    --ink-2:#160c10;
+    --red-deep:#3d0a12;
+    --red:#6d1420;
+    --red-bright:#a11e2c;
+    --gold:#c8a24a;
+    --gold-2:#e6cf8f;
+    --gold-dim:#8a7134;
+    --paper:#f3e9d8;
+    --paper-dim:#cbbfa4;
+    --line:rgba(200,162,74,.28);
+    --line-soft:rgba(200,162,74,.14);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+    background:
+      radial-gradient(1100px 640px at 50% -8%, rgba(161,30,44,.38), transparent 62%),
+      radial-gradient(900px 620px at 50% 112%, rgba(200,162,74,.13), transparent 62%),
+      linear-gradient(180deg,#0b0709 0%, #170d11 46%, #0a0608 100%);
+    background-attachment:fixed;
+    color:#e9ddc6;
+    font-family:"Songti SC","SimSun","STSong","Noto Serif CJK SC","Source Han Serif SC",serif;
+    font-size:16px;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .grain{
+    position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.055;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{
+    position:relative;z-index:1;
+    max-width:520px;margin:0 auto;
+    padding:28px 20px calc(40px + env(safe-area-inset-bottom));
+  }
+  .screen{display:none}
+  .screen.active{display:block;animation:fadeUp .42s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  /* ---------- 通用元素 ---------- */
+  .seal{
+    display:inline-block;padding:3px 12px;border:1px solid var(--line);
+    color:var(--gold);font-size:12px;letter-spacing:.35em;border-radius:2px;
+  }
+  .hair{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:22px 0}
+  .card{
+    background:
+      linear-gradient(180deg,rgba(243,233,216,.055),rgba(243,233,216,.02));
+    border:1px solid var(--line-soft);
+    border-radius:4px;
+    padding:18px 18px 20px;
+    margin-bottom:14px;
+    position:relative;
+  }
+  .card::before,.card::after{
+    content:"";position:absolute;width:9px;height:9px;border:1px solid var(--line);
+  }
+  .card::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .card::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  .label{
+    font-size:12px;letter-spacing:.3em;color:var(--gold-dim);margin-bottom:10px;
+  }
+  p{margin:0 0 12px}
+  p:last-child{margin-bottom:0}
+
+  /* ---------- 标题 ---------- */
+  .hero{text-align:center;padding:34px 0 8px}
+  .hero h1{
+    margin:14px 0 10px;
+    font-size:40px;line-height:1.24;font-weight:600;letter-spacing:.1em;
+    color:var(--paper);
+    text-shadow:0 0 26px rgba(200,162,74,.25);
+  }
+  .hero h1 em{font-style:normal;color:var(--gold-2)}
+  .hero .sub{color:var(--paper-dim);font-size:14px;letter-spacing:.06em}
+
+  /* ---------- 按钮 ---------- */
+  button{font-family:inherit;font-size:16px;cursor:pointer;border-radius:3px}
+  .btn{
+    display:block;width:100%;padding:15px 16px;
+    background:linear-gradient(180deg,#8c1c2b,#570e18);
+    border:1px solid var(--gold);
+    color:#f6ead0;letter-spacing:.22em;font-size:16px;
+    transition:transform .16s ease, box-shadow .22s ease, background .22s ease;
+    box-shadow:0 0 0 rgba(200,162,74,0);
+  }
+  .btn:hover{background:linear-gradient(180deg,#9d2131,#66121d);box-shadow:0 6px 22px rgba(200,162,74,.22)}
+  .btn:active{transform:translateY(2px) scale(.994)}
+  .btn.ghost{
+    background:rgba(200,162,74,.05);border-color:var(--line);color:var(--gold-2);
+    letter-spacing:.16em;font-size:15px;
+  }
+  .btn.ghost:hover{background:rgba(200,162,74,.13)}
+  .btn.small{padding:12px 10px;font-size:14px;letter-spacing:.1em}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  /* ---------- 密码门 ---------- */
+  .gate{margin-top:20px}
+  .field{
+    width:100%;padding:14px 16px;font-family:inherit;font-size:17px;letter-spacing:.18em;
+    background:rgba(0,0,0,.32);border:1px solid var(--line);color:var(--paper);
+    border-radius:3px;text-align:center;outline:none;transition:border-color .2s;
+  }
+  .field::placeholder{color:rgba(203,191,164,.42);letter-spacing:.1em}
+  .field:focus{border-color:var(--gold)}
+  .msg{min-height:22px;font-size:13px;text-align:center;margin:10px 0 14px;color:#e0a3a3}
+  .msg.ok{color:#a8c9a0}
+  .tiny{font-size:12px;color:rgba(203,191,164,.55);text-align:center;line-height:1.9}
+
+  /* ---------- 答题 ---------- */
+  .qhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--gold-dim);letter-spacing:.16em}
+  .qhead .qnum{color:var(--gold-2);font-size:14px}
+  .bar{height:3px;background:rgba(200,162,74,.14);margin:12px 0 26px;border-radius:2px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-dim),var(--gold-2));transition:width .38s ease}
+  .qtext{font-size:19px;line-height:1.85;color:var(--paper);margin-bottom:22px;min-height:88px}
+  .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{
+    width:100%;text-align:left;padding:15px 16px;
+    background:rgba(243,233,216,.035);
+    border:1px solid var(--line-soft);
+    color:#e6dac2;font-size:15px;line-height:1.7;
+    transition:background .18s ease,border-color .18s ease,transform .12s ease;
+    display:flex;gap:11px;align-items:flex-start;
+  }
+  .opt .k{
+    flex:0 0 auto;width:22px;height:22px;border:1px solid var(--line);border-radius:50%;
+    font-size:12px;display:flex;align-items:center;justify-content:center;
+    color:var(--gold);margin-top:2px;transition:all .18s ease;
+  }
+  .opt:hover{background:rgba(200,162,74,.09);border-color:var(--line)}
+  .opt:active{transform:scale(.99)}
+  .opt.picked{background:rgba(200,162,74,.17);border-color:var(--gold)}
+  .opt.picked .k{background:var(--gold);color:#2a060c;border-color:var(--gold)}
+  .navrow{display:flex;gap:10px;margin-top:22px}
+  .navrow .btn{flex:1}
+
+  /* ---------- 结果 ---------- */
+  .rhead{text-align:center;padding:8px 0 22px}
+  .lvb{
+    display:inline-block;font-size:13px;letter-spacing:.34em;color:#2a060c;
+    background:linear-gradient(180deg,var(--gold-2),var(--gold));
+    padding:4px 14px;border-radius:2px;
+  }
+  .rtitle{font-size:38px;letter-spacing:.14em;color:var(--paper);margin:14px 0 6px;font-weight:600}
+  .rsub{font-size:13px;color:var(--gold-dim);letter-spacing:.2em}
+  .death{color:#dfd2b8;font-size:15.5px}
+  .quote{
+    text-align:center;color:var(--gold-2);font-size:17px;line-height:1.9;
+    padding:6px 4px 20px;letter-spacing:.04em;
+  }
+  .quote span{display:block;font-size:12px;color:var(--gold-dim);letter-spacing:.3em;margin-top:10px}
+  .profile{font-size:15.5px;color:#ded1b7;line-height:2}
+  .radar-box{display:flex;justify-content:center;padding:6px 0 2px}
+  canvas#radar{width:100%;max-width:330px;height:auto;display:block}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:14px}
+  .legend div{display:flex;justify-content:space-between;font-size:13px;color:var(--paper-dim);
+    border-bottom:1px dotted rgba(200,162,74,.2);padding-bottom:4px}
+  .legend b{font-weight:400;color:var(--paper)}
+  .legend div.hi b{color:var(--gold-2)}
+  .legend div.lo b{color:#e08f8f}
+  .split{display:grid;gap:14px}
+  @media(min-width:430px){.split{grid-template-columns:1fr 1fr}}
+  .mini{font-size:12px;letter-spacing:.26em;color:var(--gold-dim);margin-bottom:8px}
+  .arch{font-size:20px;color:var(--gold-2);letter-spacing:.1em;margin-bottom:8px}
+  .fix{font-size:13.5px;color:#a8c9a0;border-left:2px solid rgba(168,201,160,.4);padding-left:10px;margin-top:10px}
+  .trivia{font-size:15px;color:#ded1b7}
+  .notice{
+    font-size:12.5px;color:rgba(203,191,164,.6);text-align:center;line-height:1.9;
+    padding:16px 6px 0;
+  }
+  .banner{
+    text-align:center;font-size:12.5px;color:var(--gold-dim);letter-spacing:.14em;
+    border:1px dashed var(--line);padding:8px;margin-bottom:16px;border-radius:3px;
+  }
+
+  /* ---------- 弹窗 ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:50;display:none;
+    background:rgba(6,3,5,.86);backdrop-filter:blur(3px);
+    padding:20px;overflow-y:auto;
+  }
+  .modal.show{display:block;animation:fadeIn .24s ease both}
+  .sheet{
+    width:100%;max-width:420px;margin:36px auto;
+    background:linear-gradient(180deg,#1c0e13,#120a0d);
+    border:1px solid var(--line);border-radius:4px;padding:24px 20px;
+    box-shadow:0 20px 60px rgba(0,0,0,.7);
+    animation:fadeUp .3s ease both;
+  }
+  .sheet h3{margin:0 0 14px;font-size:20px;color:var(--gold-2);letter-spacing:.14em;text-align:center;font-weight:600}
+  .sheet p{font-size:14.5px;color:#ded1b7;text-align:center}
+  .sheet .small{font-size:12px;color:rgba(203,191,164,.55)}
+  #shotImg{width:100%;display:block;border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  .toast{
+    position:fixed;left:50%;bottom:calc(34px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    background:rgba(20,10,14,.96);border:1px solid var(--line);color:var(--gold-2);
+    padding:10px 20px;border-radius:3px;font-size:14px;letter-spacing:.08em;
+    opacity:0;pointer-events:none;transition:opacity .28s ease;z-index:80;
+  }
+  .toast.show{opacity:1}
+  textarea.linkout{
+    width:100%;height:78px;margin:6px 0 14px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12px;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--paper-dim);border-radius:3px;resize:none;
+  }
+
+  /* ---------- 管理台 ---------- */
+  .adm-out{
+    margin-top:16px;padding:14px;background:rgba(0,0,0,.35);border:1px solid var(--line-soft);
+    border-radius:3px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;
+    color:var(--paper-dim);max-height:320px;overflow:auto;white-space:pre-wrap;line-height:1.9;
+  }
+  .row{display:flex;gap:10px;align-items:center}
+  .row .field{text-align:left;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="wrap">
+
+  <!-- ============ 开始页 ============ -->
+  <section id="screen-start" class="screen active">
+    <div class="hero">
+      <span class="seal">情境判断测验</span>
+      <h1>宫斗<em>生存</em>测试</h1>
+      <div class="sub">十八道宫里的选择题，测你能活到第几集</div>
+    </div>
+    <div class="hair"></div>
+    <div class="card">
+      <div class="label">凭密码入宫</div>
+      <p style="font-size:14px;color:var(--paper-dim)">
+        请输入商家提供的测试密码。每个密码可测试 3 次。
+      </p>
+      <div class="gate">
+        <input id="pwd" class="field" type="text" inputmode="text" autocomplete="off"
+               spellcheck="false" maxlength="24" placeholder="请输入测试密码">
+        <div id="pwdMsg" class="msg"></div>
+        <button id="btnStart" class="btn">开 始 测 试</button>
+      </div>
+      <div id="remainHint" class="tiny" style="margin-top:14px"></div>
+    </div>
+    <div class="tiny">
+      共 18 题 · 约 4 分钟 · 答完即出结果<br>
+      本测试为情境娱乐测评，不具备临床心理诊断效力
+    </div>
+  </section>
+
+  <!-- ============ 答题页 ============ -->
+  <section id="screen-quiz" class="screen">
+    <div class="qhead">
+      <span class="seal" style="letter-spacing:.2em;padding:2px 9px">宫中纪事</span>
+      <span><span class="qnum" id="qNow">1</span> / 共 <span id="qAll">18</span> 题</span>
+    </div>
+    <div class="bar"><i id="qBar"></i></div>
+    <div id="qText" class="qtext"></div>
+    <div id="qOpts" class="opts"></div>
+    <div class="navrow">
+      <button id="btnBack" class="btn ghost">上一题</button>
+    </div>
+  </section>
+
+  <!-- ============ 结果页 ============ -->
+  <section id="screen-result" class="screen">
+    <div id="shareBanner" class="banner" style="display:none">你正在查看好友分享的测评结果</div>
+    <div class="rhead">
+      <div id="rLv" class="lvb">LV.1</div>
+      <div id="rTitle" class="rtitle">炮灰宫女</div>
+      <div id="rScore" class="rsub">综合得分 18 / 72</div>
+    </div>
+    <div class="card">
+      <div class="label">你 的 死 因</div>
+      <p id="rDeath" class="death"></p>
+    </div>
+    <div id="rQuote" class="quote"></div>
+    <div class="card">
+      <div class="label">六 维 图 · 你的宫廷生存力</div>
+      <div class="radar-box"><canvas id="radar" width="660" height="660"></canvas></div>
+      <div id="rLegend" class="legend"></div>
+    </div>
+    <div class="card">
+      <div class="label">心 理 侧 写</div>
+      <p id="rProfile" class="profile"></p>
+    </div>
+    <div class="card">
+      <div class="split">
+        <div>
+          <div class="mini">生存流派</div>
+          <div id="rArch" class="arch"></div>
+          <p id="rArchText" style="font-size:14.5px;color:#ded1b7"></p>
+        </div>
+        <div>
+          <div class="mini">致命短板</div>
+          <div id="rWeak" class="arch" style="color:#e08f8f"></div>
+          <p id="rWeakText" style="font-size:14.5px;color:#ded1b7"></p>
+          <p id="rWeakFix" class="fix"></p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">历 史 冷 知 识</div>
+      <p id="rTrivia" class="trivia"></p>
+    </div>
+    <div class="btn-grid" style="margin-top:6px">
+      <button id="btnShot" class="btn">保存图片</button>
+      <button id="btnLink" class="btn">复制结果链接</button>
+    </div>
+    <div class="btn-grid" style="margin-top:10px">
+      <button id="btnAgain" class="btn ghost">再测一次</button>
+      <button id="btnGift" class="btn ghost">好评有礼</button>
+    </div>
+    <div id="rTheory" class="notice"></div>
+    <div class="notice" style="padding-top:6px">
+      本测试为情境娱乐测评，不具备临床心理诊断效力
+    </div>
+  </section>
+
+  <!-- ============ 管理台 ============ -->
+  <section id="screen-admin" class="screen">
+    <div class="hero" style="padding:18px 0 4px">
+      <span class="seal">管 理 员</span>
+      <h1 style="font-size:28px">密码批量管理</h1>
+      <div class="sub">本地版后台 · 生成、导出一批测试密码</div>
+    </div>
+    <div class="hair"></div>
+    <div class="card">
+      <div class="label">生 成 新 密 码</div>
+      <div class="row">
+        <input id="admCount" class="field" type="number" min="1" max="500" value="20" style="flex:1">
+        <button id="admGen" class="btn small" style="flex:1;width:auto">生成</button>
+      </div>
+      <p class="tiny" style="text-align:left;margin-top:12px">
+        新生成的密码会在下方列出，并自动并入可用密码库（仅本次打开有效）。
+        正式上线后这一步应放到服务器，密码不会出现在网页源码里。
+      </p>
+    </div>
+    <div class="card">
+      <div class="label">密 码 库 · 含 使 用 情 况</div>
+      <div class="row">
+        <button id="admExport" class="btn small" style="flex:1;width:auto">导出 TXT</button>
+        <button id="admCopy" class="btn ghost small" style="flex:1;width:auto">复制全部</button>
+        <button id="admReset" class="btn ghost small" style="flex:1;width:auto">重置次数</button>
+      </div>
+      <div id="admOut" class="adm-out">加载中…</div>
+    </div>
+    <button id="admBack" class="btn ghost">返回首页</button>
+  </section>
+
+</div>
+
+<!-- ============ 弹窗 ============ -->
+<div id="modal" class="modal">
+  <div class="sheet" id="modalSheet"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =========================================================
+   1. 基础配置
+   ========================================================= */
+
+var MAX_USES = 3;                 // 每个密码可测试次数
+var CODE_PREFIX = 'GD-';
+
+// 种子密码（本地演示用）。正式上线请改由服务器校验。
+var PASSWORD_SEED = [
+  'GD-8F3K2M','GD-2Q7W9P','GD-4R6T1N','GD-5Y8U3B',
+  'GD-7H2J4V','GD-3C9X6Z','GD-6M1L8K','GD-9D4S2F'
+];
+
+/* =========================================================
+   2. 六个维度
+   ========================================================= */
+
+var DIMS = [
+  { key:'cha',  name:'察势', title:'顺风耳', desc:'你对信息的敏感近乎本能。你不是爱打听，你是无法忍受"自己不知道"。你活得清醒，也活得累——因为你知道的每件事，都得你自己消化。' },
+  { key:'feng', name:'藏锋', title:'笑面佛', desc:'你的情绪管理好到有时连你自己都分不清哪句是真的。这是一种保护，也是一种代价：别人很难走近你，因为你从不给入口。' },
+  { key:'jie',  name:'结缘', title:'人脉树', desc:'你在关系里天生有一种让人放松的能力。你不靠讨好，你靠记性好、会还人情。你是那种在冷宫种菜都能种出人脉的人。' },
+  { key:'bi',   name:'避险', title:'命最长的那个', desc:'你对风险有动物般的直觉。别人看到机会时你看到代价，别人兴奋时你已经在想退路。你活得久不是靠运气，是因为你从来不信运气。' },
+  { key:'jin',  name:'进退', title:'分寸大师', desc:'你对"时机"的感觉极准。你知道什么时候该出声，也知道什么时候沉默比说话更响。这能力很稀有，尤其在所有人都急着表现的时候。' },
+  { key:'xin',  name:'立信', title:'一句顶一万句', desc:'你说过的话，别人会当真。不是因为你气场强，是因为你从不轻易承诺——而你答应过的事，砸锅卖铁也会做完。在一个人人短视的地方，信用就是最硬的资产。' }
+];
+
+var WEAK = {
+  cha:  { name:'后知后觉', text:'你永远是最后一个知道消息的人。', fix:'每天花十分钟只做一件事：观察谁和谁最近走得近了。' },
+  feng: { name:'心事写在脸上', text:'你的脸上写着你所有的心事。', fix:'练习延迟反应：让你不舒服的话，先在心里数到三再开口。' },
+  jie:  { name:'赢话输人', text:'你赢了每一场对话，输光了所有的人。', fix:'争辩前先问自己：这个道理讲赢了，对我有什么好处？' },
+  bi:   { name:'赌徒体质', text:'你总在赌，而且总觉得自己不会输。', fix:'做决定前写下最坏的结果，接受不了就先别动。' },
+  jin:  { name:'时机绝缘', text:'该进的时候你在等，该退的时候你在冲。', fix:'把"要不要做"换成"什么时候做"，很多问题会立刻清楚。' },
+  xin:  { name:'话没人信', text:'你说的话，只有你自己相信。', fix:'宁可少答应，也别含糊答应。一次兑现胜过十次解释。' }
+};
+
+/* =========================================================
+   3. 18 道题（选项分值位置已打散，分值不展示给用户）
+   ========================================================= */
+
+var QUESTIONS = [
+  { dim:'cha', text:'入宫第三天，你随大流去给皇后请安。你发现贵妃今天来早了半炷香，而皇后破天荒没让任何人进内殿，隔着帘子就把人打发了。',
+    opts:[
+      {t:'只当是今天事多，把自己的礼数做全，眼观鼻鼻观心，别的先不多想。', s:3},
+      {t:'一回屋就拉着同屋姐妹把看到的全说了，反复叮嘱她千万别站错队。', s:1},
+      {t:'行礼如仪，回去路上拐去找相熟的小宫女，问问贵妃和皇后最近是不是有过节。', s:4},
+      {t:'觉得贵妃来早了是好事，散场后主动上前递了句话，想先攀上这条线。', s:2}
+    ]},
+  { dim:'cha', text:'掌事姑姑一边剪灯花一边随口问你："听说你娘家在江南做绸缎？宫里采买绸缎的管事，也是江南人吧。"——她的眼睛一直没离开你的脸。',
+    opts:[
+      {t:'含糊地说家里早败落了，自己也不太清楚。', s:2},
+      {t:'笑着说是小本生意，跟内务府那帮大人八竿子打不着，顺手把话头拐到别处。', s:4},
+      {t:'心里一紧，反问她是怎么知道的。', s:1},
+      {t:'笑着说自己入宫前只顾着学规矩，家里的事都是兄长在管，不太清楚。', s:3}
+    ]},
+  { dim:'cha', text:'膳房送来的份例从三菜变成了两菜，还都是凉的。一打听，膳房管事刚换了新人。',
+    opts:[
+      {t:'当场发作，把冷饭菜摔回膳房，让全宫都知道你被怠慢了。', s:1},
+      {t:'先忍下来，自己掏钱把伙食补上，等合适的机会再说。', s:3},
+      {t:'直接去找管事的嫔妃告状，请她替你做主。', s:2},
+      {t:'不动声色，一边托人打听这新管事是谁荐的，一边给膳房小太监塞了点碎银。', s:4}
+    ]},
+  { dim:'feng', text:'宴席上，一位失宠的妃嫔当众说你"不过是仗着年轻"，说完笑眯眯地等你还嘴。',
+    opts:[
+      {t:'笑着把话接过来，说自己正是来向各位姐姐学规矩的，顺手把场子圆回去。', s:4},
+      {t:'低头不接话，但脸色已经藏不住了，一桌人都看在眼里。', s:2},
+      {t:'记下这笔账，面上照样含笑，此后对她不冷不热，也绝不落井下石。', s:3},
+      {t:'当场回敬一句更狠的，让人知道你不是好惹的。', s:1}
+    ]},
+  { dim:'feng', text:'你刚晋了位分，赏赐还没搬完，两个从前怠慢过你的宫女就跪在门口求饶。',
+    opts:[
+      {t:'趁机敲打她们一番，让全宫都知道以前看轻你的下场。', s:1},
+      {t:'提拔两个一直对你好的人，顺手把宫里的规矩重新立一遍。', s:3},
+      {t:'说过去的事不再提了，都起来做事，但也不给任何额外的好处。', s:4},
+      {t:'心里痛快，面上装不在意，回头在皇上面前"顺口"提了一嘴。', s:2}
+    ]},
+  { dim:'feng', text:'你被诬陷偷了贡品，罚跪两个时辰，膝盖疼得站不起来。最信任的宫女哭着说要替你去喊冤。',
+    opts:[
+      {t:'让她去，但先教她怎么说，怎么说才不连累你。', s:3},
+      {t:'由着她去，说不定事情闹大了，皇上反而会知道。', s:1},
+      {t:'强撑着爬起来，亲自去皇后宫门口跪着等，以示清白。', s:2},
+      {t:'喝止她，让她扶你回屋，什么话都别说，先把伤养好。', s:4}
+    ]},
+  { dim:'jie', text:'内务府发的炭，别处都是上好的银霜炭，到你手里永远是次一等的。管事太监每次都说"额份有限，实在为难"。',
+    opts:[
+      {t:'托一位和你有交情的老妃嫔出面，请她带你去认认内务府的门。', s:4},
+      {t:'自己想办法，拿别的东西跟人换炭，不再指望他。', s:2},
+      {t:'去找内务府总管告状，不信没人管得了他。', s:1},
+      {t:'逢年过节给这个管事备一份不显山不露水的人情，先把这个月过好。', s:3}
+    ]},
+  { dim:'jie', text:'一位正得宠的妃嫔请你喝茶，说笑间编排起另一位妃嫔的不是，话里话外暗示你和她是"一路人"。',
+    opts:[
+      {t:'顺着她的话往下说，先把这份交情应下来再说。', s:2},
+      {t:'只说那位姐姐规矩体面，不接她的暗示，也不把话说死。', s:4},
+      {t:'笑着打岔，回去之后再打听这两位到底有什么过节。', s:3},
+      {t:'当场表示自己不掺和这些，请她别再提。', s:1}
+    ]},
+  { dim:'jie', text:'一个新入宫的小宫女做错了事，要被掌事姑姑杖责。围了一圈人，谁都不敢出声。',
+    opts:[
+      {t:'觉得跟自己没关系，快步走开。', s:1},
+      {t:'当场求情，把人要到自己的宫里来。', s:2},
+      {t:'私下找姑姑说情，不点破小宫女，只说姑姑手底下的人该好好调教，把事压下去。', s:4},
+      {t:'不出声，但事后悄悄给她送药。', s:3}
+    ]},
+  { dim:'bi', text:'太监捧着白绫和毒酒到了门口，说奉旨办差。你心里清楚，这道旨是有人假传的。',
+    opts:[
+      {t:'请他把旨意当面宣读，同时让人立刻去请皇后的掌事姑姑到场。', s:4},
+      {t:'借故拖延，说想先沐浴更衣，托人赶紧把消息送出去。', s:3},
+      {t:'拒不受死，大声喊冤，让整个宫都听见。', s:1},
+      {t:'跪下谢恩，先把东西接下来，等对方放松警惕再想办法。', s:2}
+    ]},
+  { dim:'bi', text:'你收到一盒来路不明的名贵香料，还附了张没署名的帖子，说是"一位故人所赠"。',
+    opts:[
+      {t:'转手送人，反正不是自己用。', s:2},
+      {t:'正好缺这个，用了再说。', s:1},
+      {t:'原封不动退回去，顺便让人查查是谁送的。', s:3},
+      {t:'封存起来，托信得过的人悄悄验一验，同时对外说自己近来身子不适，不用香。', s:4}
+    ]},
+  { dim:'bi', text:'立储的风声越来越紧，你宫里两个常来往的姐姐，一个靠向这边，一个靠向那边。',
+    opts:[
+      {t:'干脆装病闭门，什么都不参与。', s:3},
+      {t:'谁也不得罪，慢慢减少和两人的私下往来，公事上照旧。', s:4},
+      {t:'挑一边站定，赌一把从龙之功。', s:2},
+      {t:'两边都不得罪，两边都下注。', s:1}
+    ]},
+  { dim:'jin', text:'皇上连着三晚翻了你宫里姐妹的牌子。今天路过你宫门口，停了一下。',
+    opts:[
+      {t:'装作不知，让宫女照常掌灯，自己继续做手里的事。', s:3},
+      {t:'立刻迎出去，难得的机会不能错过。', s:1},
+      {t:'出去请安，但不留人，只说天冷了请皇上保重，顺带提一句新沏的茶。', s:4},
+      {t:'先让人打听皇上今天心情如何，再决定出不出来。', s:2}
+    ]},
+  { dim:'jin', text:'你不想去赴那场明摆着要被人做文章的宴，但请病假是要报内务府记档的。',
+    opts:[
+      {t:'照常赴宴，宁可受点气，也不落下话柄。', s:2},
+      {t:'请太医开方子，把病做实，谁也说不出什么。', s:3},
+      {t:'让宫女替你告个假，说身子不适但没什么大碍。', s:1},
+      {t:'请一位平时走得近的太医开一副温补的方子，顺便让太医把话递到该听的人耳朵里。', s:4}
+    ]},
+  { dim:'jin', text:'很少过问后宫的太后突然传你去说话。到了才知道，她要问的是你娘家最近在江南的一桩买卖。',
+    opts:[
+      {t:'挑能说的说，然后把话头引到太后年轻时在江南的旧事上，请她讲讲。', s:4},
+      {t:'老实全说，知无不言。', s:2},
+      {t:'谨慎作答，回去立刻写信让家里把生意收手。', s:3},
+      {t:'说自己入宫之后家里的事一概不知。', s:1}
+    ]},
+  { dim:'xin', text:'你手里攥着一个足以扳倒对手的把柄，但这事牵涉到一位曾经帮过你的老人。',
+    opts:[
+      {t:'全部交出去，趁机一击致命。', s:1},
+      {t:'谁都不说，把把柄烂在肚子里。', s:4},
+      {t:'只交出和老人无关的那一半。', s:2},
+      {t:'去提醒那位老人，让他自己有个准备。', s:3}
+    ]},
+  { dim:'xin', text:'一个不得势的妃嫔来求你，说日后若有出头之日，必不忘你今天的情分，想先跟你借笔银子周转。',
+    opts:[
+      {t:'答应借，但只给一半，剩下的含糊应下。', s:1},
+      {t:'倾囊相助，把这份情分做实。', s:3},
+      {t:'实话实说自己的难处，但答应在自己能力范围内替她留意机会。', s:4},
+      {t:'先拖着不表态，等看清风向再说。', s:2}
+    ]},
+  { dim:'xin', text:'三年前你落魄时，一位掌事姑姑替你担过一次责。如今你已得势，她却因年迈要被调去守陵。',
+    opts:[
+      {t:'替她争取一个清闲但不显眼的差事，既还了情，也不引人注目。', s:3},
+      {t:'旧事已过，自己如今的处境不宜多生枝节，装作不知。', s:1},
+      {t:'送一份厚礼，算还了当年的情，别的就不管了。', s:2},
+      {t:'出手把她留下来，安排在自己宫里养老。', s:4}
+    ]}
+];
+
+/* =========================================================
+   4. 结果等级
+   ========================================================= */
+
+var LEVELS = [
+  { lv:1, min:18, max:27, title:'炮灰宫女',
+    death:'入宫第七天，因为多问了一句"娘娘今天怎么没来"，被人记下了名字。当夜，她"病故"在偏房。',
+    quote:'你不是不会看眼色，你是根本来不及看。',
+    profile:'你是一个还来不及长大，就被扔进深水区的人。你相信别人说的话，因为你希望这个世界是简单的；你开口之前不看风向，因为你还没学会把真心藏起来。你不是笨，你只是还没把人想得那么坏——而这个地方，恰恰是靠这一点吃人的。可惜的是，最早被淘汰的从来不是最坏的人，是最真诚的人。',
+    trivia:'清代宫女归内务府管辖，入宫要造册登记。史书上"病故"两个字，盖住了多少人的一生。' },
+  { lv:2, min:28, max:32, title:'三集下线',
+    death:'被人当枪使了一次。事成之后，她作为"办事的那个人"，被一并处置了。',
+    quote:'别人进宫是来争宠的，你是来给人当台阶的。',
+    profile:'你是一个把"讲义气"放在"看清楚"前面的人。有人对你好一点，你就能为他跑很远的路；有人开口求你，你就很难说出那个"不"字。你不是不懂危险，你只是觉得"这次应该不会吧"。而每一次"应该不会"，都要拿命来还。你要学的不是变坏，是在答应之前先问一句：这对谁有好处？',
+    trivia:'替主子办事的下人叫"使唤人"。事成了要灭口，事败了要顶罪——她们从来没被当成"人"算过。' },
+  { lv:3, min:33, max:38, title:'冷宫常驻',
+    death:'她没输，只是被挪去了冷宫。在那儿种菜、养鸡、看四季，活了很多年。死的时候，没人记得清是哪一天。',
+    quote:'你输了，但你没倒下——你在冷宫种出了一整片菜地。',
+    profile:'你是一个把"活下去"当底线、而不是当口号的人。你不争，不是因为你不会，而是你很早就明白，有些东西不值得拿命去换。你在最差的地方也能把日子过出秩序——种菜、喂鸡、记得每一个节气。这样的人在任何时代都不会死得难看，但也很容易被时代忘掉。你缺的不是韧性，是一次"我想要"。',
+    trivia:'冷宫不是一个宫殿，而是失宠妃嫔被安置的偏僻院落的统称。清代确有妃嫔被幽禁在宫中的冷僻角落。' },
+  { lv:4, min:39, max:45, title:'勉强苟活',
+    death:'死在一个没人记得的冬天。太医赶到的时候，正好是别人当值。',
+    quote:'你的求生欲很强，强到你只活成了背景板。',
+    profile:'你是一个从来不想当出头鸟的人。别人吵架你低头，别人站队你装傻，别人争抢你说"我随便"。你以为不选边就安全，其实不选边也是一种选择——只是把主动权交给了别人。你的求生欲满分，存在感零分。这个世界对退让的人从来没有额外的奖励，宫里尤其没有。',
+    trivia:'清宫太医分班轮值。妃嫔生病能不能请到好太医，本身就是地位问题。命这件事，从来都不是公平的。' },
+  { lv:5, min:46, max:52, title:'中层嫔妃',
+    death:'一场小病拖成了大病。她这一生最大的成就，是没犯过大错。',
+    quote:'你不是不会争，你是每次都在最关键的那一步犹豫了一下。',
+    profile:'你是一个什么都看得懂、却总在最后一秒收回手的人。你知道该说什么，也知道该什么时候说，可你更害怕说错。你不是没能力，你是把"不犯错"当成了最高目标——而在这里，不犯错只能保你不掉下去，保不了你往上走。你缺的那一点点，其实不是聪明，是敢。',
+    trivia:'后宫份例按位分定额，膳食、炭火、衣料都有明文规定。所谓"恩宠"，很多时候不过是折算成了几斤炭、几尺绸。' },
+  { lv:6, min:53, max:58, title:'后宫老油条',
+    death:'活着的时候没人怕她。死后才发现，她赏过的下人遍布六宫。',
+    quote:'你早就想明白了：宠是别人的，命是自己的。',
+    profile:'你是一个把人情世故摸得比谁都透的人。你早就看明白，宠是别人的，命是自己的；你也早就知道，真正能用的人不一定是最亲近的人。你不站队，但你的关系网比谁都密——你不是不参与，你是换了一种更长久的方式参与。你唯一的问题是：你太会保护自己了，以至于没人知道你到底想要什么。',
+    trivia:'宫女二十五岁可以出宫，太监终身在宫。所以宫里待得最久、知道最多的，是下人——而历史从不记她们的名字。' },
+  { lv:7, min:59, max:64, title:'笑到最后',
+    death:'寿终正寝。宫里活过她的人，一个都没有。',
+    quote:'你笑到最后，不是因为最狠，是因为最稳。',
+    profile:'你是一个不靠情绪做决定的人。别人在赌的时候你在算，别人在争的时候你在等，别人在得意的时候你在收。你不是没有感情，你只是把感情放在了更该放的地方。你赢的方式不是最狠，而是最稳——稳到所有掀桌子的人换了三轮，你还在桌边坐着。',
+    trivia:'清代后妃里长寿的不在少数。活到最后靠的常常不是恩宠，是辈分：新帝登基，你就是长辈。在这套制度里，权力会转移，辈分不会。' },
+  { lv:8, min:65, max:72, title:'太后本后',
+    death:'史书上关于她只有一行字。可那一行字底下压着的事，全宫心知肚明——真正说了算的人，是她。',
+    quote:'你不是活到了最后，你是定义了什么叫最后。',
+    profile:'你是一个把"忍"和"断"分得很清的人。该忍的时候，你能忍到别人以为你认了；该断的时候，你下手比谁都干净。你从来不指望别人给你公道，你自己就是那个发公道的人。到了最后，你已经不需要争什么了——因为规矩是你定的，牌是你发的。真正的权力从来不是被宠，是没人能把你赶下桌。',
+    trivia:'太后不住东西六宫，住慈宁宫、寿康宫。她不参与争宠，因为她已经不在那个系统里了——她成了那个系统本身。' },
+  { lv:9, min:68, max:72, hidden:true, title:'太后的本纪',
+    death:'她的儿子登基后，破例为生母单独立了本纪。翻遍二十四史，能以本纪留名的女子，一只手数得过来。',
+    quote:'她不是谁的妻子，她是一个朝代的开头。',
+    profile:'你是一个把整盘棋都看完了的人。你最厉害的地方不是某一招，而是你从来没有把自己当成一颗棋子。在这个地方，女人被教导要温顺、要安分、要把希望寄托在别人身上——你偏偏把每一步都走成了自己的。到最后，你不需要谁给你一个位置，因为那个位置就是照着你修的。',
+    trivia:'二十四史里，能留下本纪的女子屈指可数。写史的是男人，能被写进去的，往往是男人也绕不过去的女人。' }
+];
+
+var THEORY = '本测试采用情境判断测验（SJT）的题型设计。六个维度分别对应信息洞察、情绪调节、社会资本、风险感知、时机判断与长期信誉，场景依据清代宫廷的真实规制还原。';
+
+/* =========================================================
+   5. 状态与存储
+   ========================================================= */
+
+var memStore = {};
+function lsGet(k){ try{ var v = localStorage.getItem(k); return v===null ? (memStore[k]||null) : v; }catch(e){ return memStore[k]||null; } }
+function lsSet(k,v){ memStore[k]=v; try{ localStorage.setItem(k,v); }catch(e){} }
+
+var state = { idx:0, answers:new Array(QUESTIONS.length).fill(null), pwd:null, shared:false, locking:false };
+
+var EXTRA_CODES = [];  // 管理台新生成的密码（本地保存）
+try{
+  var rawCodes = lsGet('gs_codes');
+  if(rawCodes) EXTRA_CODES = JSON.parse(rawCodes) || [];
+}catch(e){ EXTRA_CODES = []; }
+function saveCodes(){ lsSet('gs_codes', JSON.stringify(EXTRA_CODES)); }
+
+function allCodes(){ return PASSWORD_SEED.concat(EXTRA_CODES); }
+function useCount(code){
+  var v = parseInt(lsGet('gs_use_'+code) || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+function useUp(code){ lsSet('gs_use_'+code, String(useCount(code)+1)); }
+
+/* =========================================================
+   6. 工具
+   ========================================================= */
+
+function $(id){ return document.getElementById(id); }
+function show(id){
+  var list = document.querySelectorAll('.screen');
+  for(var i=0;i<list.length;i++) list[i].classList.remove('active');
+  $(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+var toastTimer = null;
+function toast(msg){
+  var el = $('toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1900);
+}
+
+function openModal(html){
+  $('modalSheet').innerHTML = html;
+  $('modal').classList.add('show');
+}
+function closeModal(){ $('modal').classList.remove('show'); }
+
+function copyText(text, okMsg){
+  function done(){ toast(okMsg || '已复制'); }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+    document.body.removeChild(ta);
+    if(ok) done();
+    else openModal('<h3>手动复制</h3><p style="font-size:13px">浏览器没给出复制权限，请长按或全选下面这段内容：</p>'+
+                   '<textarea class="linkout" onfocus="this.select()">'+text+'</textarea>'+
+                   '<button class="btn" onclick="window.__closeModal()">知道了</button>');
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+}
+
+window.__closeModal = closeModal;
+
+/* =========================================================
+   7. 计分与结果
+   ========================================================= */
+
+function calcDims(answers){
+  var map = {}; DIMS.forEach(function(d){ map[d.key] = 0; });
+  var total = 0;
+  for(var i=0;i<QUESTIONS.length;i++){
+    var ai = answers[i]; if(ai === null || ai === undefined) continue;
+    var q = QUESTIONS[i];
+    total += q.opts[ai].s;
+    map[q.dim] += q.opts[ai].s;
+  }
+  return { total:total, vals:DIMS.map(function(d){ return map[d.key]; }) };
+}
+
+function pickLevel(total, vals){
+  var hidden = LEVELS[8];
+  var allStrong = vals.every(function(v){ return v >= 10; });
+  if(total >= hidden.min && allStrong) return hidden;
+  for(var i=0;i<8;i++){
+    if(total >= LEVELS[i].min && total <= LEVELS[i].max) return LEVELS[i];
+  }
+  return LEVELS[0];
+}
+
+function buildResult(total, vals){
+  var level = pickLevel(total, vals);
+  var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
+  return {
+    total: total,
+    vals: vals,
+    level: level,
+    arch: DIMS[vals.indexOf(maxV)],
+    weak: DIMS[vals.indexOf(minV)]
+  };
+}
+
+/* =========================================================
+   8. 答题流程
+   ========================================================= */
+
+function startQuiz(){
+  state.idx = 0;
+  state.answers = new Array(QUESTIONS.length).fill(null);
+  state.shared = false;
+  state.locking = false;
+  $('qAll').textContent = QUESTIONS.length;
+  renderQuestion();
+  show('screen-quiz');
+}
+
+function renderQuestion(){
+  var q = QUESTIONS[state.idx];
+  $('qNow').textContent = state.idx + 1;
+  $('qBar').style.width = ((state.idx) / QUESTIONS.length * 100) + '%';
+  $('qText').textContent = q.text;
+
+  var box = $('qOpts'); box.innerHTML = '';
+  var letters = ['A','B','C','D'];
+  q.opts.forEach(function(o, i){
+    var b = document.createElement('button');
+    b.className = 'opt' + (state.answers[state.idx] === i ? ' picked' : '');
+    b.innerHTML = '<span class="k">'+letters[i]+'</span><span>'+o.t+'</span>';
+    b.addEventListener('click', function(){ choose(i); });
+    box.appendChild(b);
+  });
+
+  $('btnBack').disabled = (state.idx === 0);
+  $('btnBack').style.opacity = state.idx === 0 ? '.35' : '1';
+}
+
+function choose(i){
+  if(state.locking) return;
+  state.locking = true;
+  state.answers[state.idx] = i;
+  var opts = $('qOpts').children;
+  for(var k=0;k<opts.length;k++) opts[k].classList.remove('picked');
+  opts[i].classList.add('picked');
+  $('qBar').style.width = ((state.idx + 1) / QUESTIONS.length * 100) + '%';
+
+  setTimeout(function(){
+    state.locking = false;
+    if(state.idx < QUESTIONS.length - 1){
+      state.idx++;
+      renderQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 280);
+}
+
+function finishQuiz(){
+  var r = calcDims(state.answers);
+  var result = buildResult(r.total, r.vals);
+
+  // 生成结果时消耗一次机会
+  if(state.pwd){
+    useUp(state.pwd);
+  }
+  renderResult(result, false);
+  show('screen-result');
+}
+
+/* =========================================================
+   9. 结果渲染
+   ========================================================= */
+
+var currentResult = null;
+
+function renderResult(result, shared){
+  currentResult = result;
+  state.shared = !!shared;
+
+  $('shareBanner').style.display = shared ? 'block' : 'none';
+  $('rLv').textContent = 'LV.' + result.level.lv;
+  $('rTitle').textContent = result.level.title;
+  $('rScore').textContent = '综合得分 ' + result.total + ' / 72';
+  $('rDeath').textContent = result.level.death;
+  $('rQuote').innerHTML = '「' + result.level.quote + '」<span>宫 斗 生 存 测 试</span>';
+  $('rProfile').textContent = result.level.profile;
+  $('rArch').textContent = result.arch.title;
+  $('rArchText').textContent = result.arch.desc;
+  $('rWeak').textContent = WEAK[result.weak.key].name;
+  $('rWeakText').textContent = WEAK[result.weak.key].text;
+  $('rWeakFix').textContent = '怎么补：' + WEAK[result.weak.key].fix;
+  $('rTrivia').textContent = result.level.trivia;
+  $('rTheory').textContent = THEORY;
+
+  // 六维图例
+  var maxV = Math.max.apply(null, result.vals), minV = Math.min.apply(null, result.vals);
+  var lg = $('rLegend'); lg.innerHTML = '';
+  DIMS.forEach(function(d, i){
+    var cls = result.vals[i] === maxV ? 'hi' : (result.vals[i] === minV ? 'lo' : '');
+    var div = document.createElement('div');
+    div.className = cls;
+    div.innerHTML = '<span>'+d.name+'</span><b>'+result.vals[i]+' / 12</b>';
+    lg.appendChild(div);
+  });
+
+  $('btnAgain').textContent = shared ? '我也要测' : '再测一次';
+  drawRadarCanvas();
+}
+
+/* ---------- 雷达图 ---------- */
+
+function drawRadar(ctx, cx, cy, radius, values, o){
+  var n = 6;
+  function ang(i){ return -Math.PI/2 + i * 2 * Math.PI / n; }
+  var i, r, rr, x, y;
+
+  for(r=1;r<=4;r++){
+    ctx.beginPath();
+    for(i=0;i<n;i++){
+      rr = radius * r / 4;
+      x = cx + Math.cos(ang(i))*rr; y = cy + Math.sin(ang(i))*rr;
+      i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = o.grid; ctx.lineWidth = o.gridW; ctx.stroke();
+  }
+  for(i=0;i<n;i++){
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx + Math.cos(ang(i))*radius, cy + Math.sin(ang(i))*radius);
+    ctx.strokeStyle = o.grid; ctx.lineWidth = o.gridW; ctx.stroke();
+  }
+  ctx.beginPath();
+  for(i=0;i<n;i++){
+    rr = radius * Math.max(0, Math.min(1, values[i]/12));
+    x = cx + Math.cos(ang(i))*rr; y = cy + Math.sin(ang(i))*rr;
+    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = o.fill; ctx.fill();
+  ctx.strokeStyle = o.stroke; ctx.lineWidth = o.strokeW; ctx.stroke();
+
+  for(i=0;i<n;i++){
+    rr = radius * Math.max(0, Math.min(1, values[i]/12));
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(ang(i))*rr, cy + Math.sin(ang(i))*rr, o.dotR, 0, Math.PI*2);
+    ctx.fillStyle = o.dot; ctx.fill();
+  }
+  if(o.labels){
+    ctx.font = o.labelFont;
+    ctx.fillStyle = o.labelColor;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for(i=0;i<n;i++){
+      var lr = radius + o.labelPad;
+      ctx.fillText(o.labels[i], cx + Math.cos(ang(i))*lr, cy + Math.sin(ang(i))*lr);
+    }
+  }
+}
+
+function drawRadarCanvas(){
+  var cv = $('radar');
+  var W = 660;
+  cv.width = W; cv.height = W;
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,W,W);
+  drawRadar(ctx, W/2, W/2, W*0.30, currentResult.vals, {
+    grid:'rgba(200,162,74,.20)', gridW:2,
+    fill:'rgba(200,162,74,.24)', stroke:'rgba(230,207,143,.95)', strokeW:3.5,
+    dot:'#f3e9d8', dotR:6.5,
+    labels:DIMS.map(function(d){ return d.name; }),
+    labelFont:'27px "Songti SC","SimSun",serif',
+    labelColor:'#cbbfa4', labelPad:W*0.105
+  });
+}
+
+/* =========================================================
+   10. 结果图片
+   ========================================================= */
+
+function wrapText(ctx, text, maxW){
+  var lines = [], line = '';
+  for(var i=0;i<text.length;i++){
+    var ch = text[i];
+    if(ch === '\n'){ lines.push(line); line = ''; continue; }
+    var test = line + ch;
+    if(ctx.measureText(test).width > maxW && line){ lines.push(line); line = ch; }
+    else line = test;
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+
+function makeShot(){
+  var r = currentResult;
+  var W = 750, PAD = 62, CW = W - PAD*2;
+  var probe = document.createElement('canvas').getContext('2d');
+  var SERIF = '"Songti SC","SimSun","STSong",serif';
+
+  probe.font = '22px ' + SERIF;
+  var deathLines = wrapText(probe, r.level.death, CW);
+  probe.font = '26px ' + SERIF;
+  var quoteLines = wrapText(probe, '「' + r.level.quote + '」', CW - 20);
+  probe.font = '21px ' + SERIF;
+  var profileLines = wrapText(probe, r.level.profile, CW);
+
+  var y = 0;
+  var H = 96                       // 顶部
+        + 78                       // LV
+        + 84                       // 称号
+        + 44                       // 分数
+        + 40                       // 分割线
+        + 40 + deathLines.length*34 + 34
+        + 26 + quoteLines.length*42 + 40
+        + 380                      // 雷达
+        + 44 + profileLines.length*34 + 30
+        + 240;                     // 页脚
+
+  var cv = document.createElement('canvas');
+  var scale = 2;
+  cv.width = W * scale; cv.height = H * scale;
+  var ctx = cv.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // 背景
+  var bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#2a070d'); bg.addColorStop(.5,'#3a0b13'); bg.addColorStop(1,'#180a0e');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  var glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 700);
+  glow.addColorStop(0,'rgba(200,162,74,.22)'); glow.addColorStop(1,'rgba(200,162,74,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0,0,W,700);
+
+  // 边框
+  ctx.strokeStyle = 'rgba(200,162,74,.75)'; ctx.lineWidth = 2;
+  ctx.strokeRect(24,24,W-48,H-48);
+  ctx.strokeStyle = 'rgba(200,162,74,.28)'; ctx.lineWidth = 1;
+  ctx.strokeRect(36,36,W-72,H-72);
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  y = 96;
+  ctx.font = '20px ' + SERIF; ctx.fillStyle = '#c8a24a';
+  ctx.fillText('宫 斗 生 存 测 试', W/2, y);
+
+  y += 84;
+  ctx.font = '600 40px ' + SERIF; ctx.fillStyle = '#e6cf8f';
+  ctx.fillText('LV.' + r.level.lv, W/2, y);
+
+  y += 76;
+  ctx.font = '600 60px ' + SERIF; ctx.fillStyle = '#f6efdd';
+  ctx.fillText(r.level.title, W/2, y);
+
+  y += 44;
+  ctx.font = '20px ' + SERIF; ctx.fillStyle = 'rgba(203,191,164,.75)';
+  ctx.fillText('综合得分 ' + r.total + ' / 72', W/2, y);
+
+  y += 30;
+  var lg = ctx.createLinearGradient(PAD,0,W-PAD,0);
+  lg.addColorStop(0,'rgba(200,162,74,0)');
+  lg.addColorStop(.5,'rgba(200,162,74,.6)');
+  lg.addColorStop(1,'rgba(200,162,74,0)');
+  ctx.fillStyle = lg; ctx.fillRect(PAD, y, CW, 1);
+
+  // 死因
+  y += 42;
+  ctx.textAlign = 'left';
+  ctx.font = '18px ' + SERIF; ctx.fillStyle = '#8a7134';
+  ctx.fillText('你 的 死 因', PAD, y);
+  y += 36;
+  ctx.font = '22px ' + SERIF; ctx.fillStyle = '#ded1b7';
+  deathLines.forEach(function(l){ ctx.fillText(l, PAD, y); y += 34; });
+
+  // 金句
+  y += 34;
+  ctx.textAlign = 'center';
+  ctx.font = '26px ' + SERIF; ctx.fillStyle = '#e6cf8f';
+  quoteLines.forEach(function(l){ ctx.fillText(l, W/2, y); y += 42; });
+
+  // 雷达
+  y += 40;
+  ctx.font = '18px ' + SERIF; ctx.fillStyle = '#8a7134';
+  ctx.fillText('六 维 图 · 宫 廷 生 存 力', W/2, y);
+  var radarCy = y + 190;
+  drawRadar(ctx, W/2, radarCy, 138, r.vals, {
+    grid:'rgba(200,162,74,.24)', gridW:1,
+    fill:'rgba(200,162,74,.26)', stroke:'rgba(230,207,143,.95)', strokeW:2,
+    dot:'#f6efdd', dotR:4,
+    labels:DIMS.map(function(d){ return d.name; }),
+    labelFont:'20px ' + SERIF,
+    labelColor:'#cbbfa4', labelPad:52
+  });
+  // 维度分值（分两行，避免超出画布）
+  ctx.font = '17px ' + SERIF; ctx.fillStyle = 'rgba(203,191,164,.72)';
+  var rowA = DIMS.slice(0,3).map(function(d,i){ return d.name + ' ' + r.vals[i]; }).join('  ·  ');
+  var rowB = DIMS.slice(3).map(function(d,i){ return d.name + ' ' + r.vals[i+3]; }).join('  ·  ');
+  ctx.fillText(rowA, W/2, radarCy + 228);
+  ctx.fillText(rowB, W/2, radarCy + 256);
+  y = radarCy + 290;
+
+  // 心理侧写
+  y += 30;
+  ctx.textAlign = 'left';
+  ctx.font = '18px ' + SERIF; ctx.fillStyle = '#8a7134';
+  ctx.fillText('心 理 侧 写', PAD, y);
+  y += 34;
+  ctx.font = '21px ' + SERIF; ctx.fillStyle = '#ded1b7';
+  profileLines.forEach(function(l){ ctx.fillText(l, PAD, y); y += 34; });
+
+  // 页脚
+  y += 34;
+  ctx.textAlign = 'center';
+  ctx.font = '17px ' + SERIF; ctx.fillStyle = 'rgba(203,191,164,.55)';
+  ctx.fillText('本测试为情境娱乐测评，不具备临床心理诊断效力', W/2, y);
+  y += 30;
+  ctx.font = '17px ' + SERIF; ctx.fillStyle = 'rgba(200,162,74,.6)';
+  ctx.fillText('宫 斗 生 存 测 试', W/2, y);
+
+  return cv.toDataURL('image/png');
+}
+
+/* =========================================================
+   11. 分享链接
+   ========================================================= */
+
+function buildLink(){
+  var r = currentResult;
+  var payload = [r.total].concat(r.vals).join('.');
+  return location.href.split('#')[0] + '#r=' + payload;
+}
+
+function readHash(){
+  var h = location.hash || '';
+  if(h === '#admin'){ openAdmin(); return true; }
+  var m = h.match(/#r=(\d+(?:\.\d+){6})/);
+  if(m){
+    var nums = m[1].split('.').map(Number);
+    var total = nums[0], vals = nums.slice(1);
+    renderResult(buildResult(total, vals), true);
+    show('screen-result');
+    return true;
+  }
+  return false;
+}
+
+/* =========================================================
+   12. 管理台
+   ========================================================= */
+
+function randomCode(len){
+  var pool = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var s = '';
+  for(var i=0;i<len;i++) s += pool[Math.floor(Math.random()*pool.length)];
+  return CODE_PREFIX + s;
+}
+
+function openAdmin(){
+  renderAdmin();
+  show('screen-admin');
+}
+
+function renderAdmin(){
+  var out = '';
+  allCodes().forEach(function(c){
+    var used = useCount(c);
+    var mark = used >= MAX_USES ? '  已用完' : ('  剩余 ' + (MAX_USES - used) + ' 次');
+    out += c + '        已用 ' + used + '/' + MAX_USES + mark + '\n';
+  });
+  $('admOut').textContent = out;
+}
+
+/* =========================================================
+   13. 事件绑定
+   ========================================================= */
+
+// 开始页
+$('pwd').addEventListener('input', function(){
+  this.value = this.value.toUpperCase();
+  var code = this.value.trim();
+  if(!code){ $('pwdMsg').textContent = ''; $('pwdMsg').className = 'msg'; $('remainHint').textContent = ''; return; }
+  var known = allCodes().indexOf(code) !== -1;
+  if(known){
+    var left = MAX_USES - useCount(code);
+    if(left > 0){
+      $('pwdMsg').textContent = '密码有效';
+      $('pwdMsg').className = 'msg ok';
+      $('remainHint').textContent = '该密码剩余 ' + left + ' 次测试机会';
+    } else {
+      $('pwdMsg').textContent = '该密码的 3 次机会已用完';
+      $('pwdMsg').className = 'msg';
+      $('remainHint').textContent = '请联系商家获取新的密码';
+    }
+  } else {
+    $('pwdMsg').textContent = '';
+    $('pwdMsg').className = 'msg';
+    $('remainHint').textContent = '';
+  }
+});
+
+$('btnStart').addEventListener('click', function(){
+  var code = $('pwd').value.trim().toUpperCase();
+  if(!code){
+    $('pwdMsg').textContent = '请输入测试密码';
+    $('pwdMsg').className = 'msg';
+    return;
+  }
+  if(allCodes().indexOf(code) === -1){
+    $('pwdMsg').textContent = '密码不对，请核对包装上的编码';
+    $('pwdMsg').className = 'msg';
+    return;
+  }
+  if(useCount(code) >= MAX_USES){
+    $('pwdMsg').textContent = '该密码的 3 次机会已用完';
+    $('pwdMsg').className = 'msg';
+    $('remainHint').textContent = '请联系商家获取新的密码';
+    return;
+  }
+  state.pwd = code;
+  $('pwdMsg').textContent = '';
+  $('remainHint').textContent = '';
+  startQuiz();
+});
+
+$('pwd').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') $('btnStart').click();
+});
+
+// 答题页
+$('btnBack').addEventListener('click', function(){
+  if(state.locking) return;
+  if(state.idx > 0){ state.idx--; renderQuestion(); }
+});
+
+// 结果页
+$('btnShot').addEventListener('click', function(){
+  var url;
+  try{ url = makeShot(); }
+  catch(e){ toast('图片生成失败，请重试'); return; }
+  openModal(
+    '<h3>保存到相册</h3>'+
+    '<img id="shotImg" src="'+url+'" alt="宫斗生存测试结果">'+
+    '<p class="small" style="margin-top:12px">手机：长按上图，选择「保存图片」</p>'+
+    '<p class="small">电脑：点下面的按钮下载</p>'+
+    '<div style="height:6px"></div>'+
+    '<a class="btn" style="display:block;text-align:center;text-decoration:none" download="宫斗生存测试.png" href="'+url+'">下载图片</a>'+
+    '<div style="height:10px"></div>'+
+    '<button class="btn ghost" onclick="window.__closeModal()">关闭</button>'
+  );
+});
+
+$('btnLink').addEventListener('click', function(){
+  copyText(buildLink(), '结果链接已复制，发给朋友即可查看');
+});
+
+$('btnAgain').addEventListener('click', function(){
+  if(state.shared || !state.pwd){
+    state.shared = false;
+    $('pwd').value = '';
+    $('pwdMsg').textContent = '';
+    $('remainHint').textContent = '输入密码即可开始你自己的测评';
+    location.hash = '';
+    show('screen-start');
+    return;
+  }
+  var left = MAX_USES - useCount(state.pwd);
+  if(left <= 0){
+    openModal('<h3>次数已用完</h3><p>这个密码的 3 次测试机会已经用完了。</p>'+
+              '<p class="small">请联系商家获取新的密码。</p>'+
+              '<button class="btn" onclick="window.__closeModal()">知道了</button>');
+    return;
+  }
+  startQuiz();
+});
+
+$('btnGift').addEventListener('click', function(){
+  openModal(
+    '<h3>好评有礼</h3>'+
+    '<p>给店铺好评并晒出使用体验，凭好评截图联系商家，即可领取 <b style="color:#e6cf8f">1 元返现</b>。</p>'+
+    '<p class="small">晒图礼长期有效，最终解释权归商家所有。</p>'+
+    '<div style="height:12px"></div>'+
+    '<button class="btn" onclick="window.__closeModal()">知道了</button>'
+  );
+});
+
+// 弹窗
+$('modal').addEventListener('click', function(e){ if(e.target === this) closeModal(); });
+
+// 管理台
+$('admGen').addEventListener('click', function(){
+  var n = parseInt($('admCount').value, 10);
+  if(isNaN(n) || n < 1) n = 1;
+  if(n > 500) n = 500;
+  var made = [];
+  for(var i=0;i<n;i++){
+    var c;
+    do{ c = randomCode(6); }while(allCodes().indexOf(c) !== -1 || made.indexOf(c) !== -1);
+    made.push(c);
+  }
+  EXTRA_CODES = EXTRA_CODES.concat(made);
+  saveCodes();
+  renderAdmin();
+  toast('已生成 ' + n + ' 个新密码');
+});
+
+$('admExport').addEventListener('click', function(){
+  var lines = ['宫斗生存测试 · 测试密码清单', '生成时间：' + new Date().toLocaleString('zh-CN'), ''];
+  allCodes().forEach(function(c){
+    lines.push(c + '\t已用 ' + useCount(c) + '/' + MAX_USES);
+  });
+  lines.push('', '每个密码可测试 ' + MAX_USES + ' 次。');
+  var blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '宫斗密码清单.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+});
+
+$('admCopy').addEventListener('click', function(){
+  copyText(allCodes().join('\n'), '已复制全部密码');
+});
+
+$('admReset').addEventListener('click', function(){
+  allCodes().forEach(function(c){ lsSet('gs_use_'+c, '0'); });
+  renderAdmin();
+  toast('所有密码的使用次数已重置');
+});
+
+$('admBack').addEventListener('click', function(){
+  location.hash = '';
+  show('screen-start');
+});
+
+window.addEventListener('resize', function(){
+  if($('screen-result').classList.contains('active') && currentResult) drawRadarCanvas();
+});
+
+/* =========================================================
+   14. 启动
+   ========================================================= */
+
+if(!readHash()){
+  show('screen-start');
+}
+
+})();
+</script>
+</body>
+</html>
