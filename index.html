@@ -242,7 +242,7 @@
     <div class="card">
       <div class="label">凭密码入宫</div>
       <p style="font-size:14px;color:var(--paper-dim)">
-        请输入商家提供的测试密码。每个密码可测试 3 次。
+        请输入商家发给你的测试密码。每个密码只能开启一次测试，测完立即失效。
       </p>
       <div class="gate">
         <input id="pwd" class="field" type="text" inputmode="text" autocomplete="off"
@@ -274,7 +274,9 @@
 
   <!-- ============ 结果页 ============ -->
   <section id="screen-result" class="screen">
-    <div id="shareBanner" class="banner" style="display:none">你正在查看好友分享的测评结果</div>
+    <div id="shareBanner" class="banner" style="display:none">
+      你正在查看好友分享的测评结果 · 想自己测一次，请联系商家获取专属链接
+    </div>
     <div class="rhead">
       <div id="rLv" class="lvb">LV.1</div>
       <div id="rTitle" class="rtitle">炮灰宫女</div>
@@ -367,17 +369,20 @@
           <button id="admGen" class="btn small" style="flex:1;width:auto">生成</button>
         </div>
         <p class="tiny" style="text-align:left;margin-top:12px">
-          密码直接写入云端数据库，网页源码里不含任何密码。生成后可导出成 TXT 发给客户。
+          每个密码只能开启一次测试，测完立即失效。生成后点列表里的「复制链接」，
+          把专属链接发给买家，他点开就能直接开始，不用手输密码。
         </p>
       </div>
 
       <div class="card">
-        <div class="label">密 码 库 · 含 使 用 情 况</div>
+        <div class="label">测 试 链 接 库</div>
         <div class="btn-grid" style="margin-bottom:12px">
           <button id="admRefresh" class="btn small">刷新列表</button>
           <button id="admExport" class="btn small">导出 TXT</button>
-          <button id="admCopy" class="btn ghost small">复制全部</button>
+          <button id="admCopy" class="btn ghost small">复制全部链接</button>
+          <button id="admCopyCode" class="btn ghost small">复制全部密码</button>
           <button id="admReset" class="btn ghost small">重置全部次数</button>
+          <button id="admToOne" class="btn ghost small">全部改为 1 次机会</button>
         </div>
         <div id="admOut" class="adm-out">登录后自动加载…</div>
       </div>
@@ -406,7 +411,8 @@
 var SUPABASE_URL = 'https://xqdhwjymfbiipbkvtbwu.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxZGh3anltZmJpaXBia3Z0Ynd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTA0OTIsImV4cCI6MjEwNzI4NjQ5Mn0.QvgEyQ8-xJu3IjRMaiet8cu3GjdEwfqU_HSwsKDLXU4';
 
-var MAX_USES = 3;                 // 默认每个密码可测试次数
+// 每个测试链接可开启的测试次数。1 = 一人一次，测完即失效
+var MAX_USES = 1;
 
 function apiHeaders(token){
   return {
@@ -670,7 +676,8 @@ var state = {
   pwd: null,
   shared: false,
   locking: false,
-  submitting: false
+  submitting: false,
+  networkFailedOnce: false
 };
 
 var pwdTimer = null;        // 输入密码时的延时校验
@@ -783,6 +790,8 @@ function startQuiz(){
   state.answers = new Array(QUESTIONS.length).fill(null);
   state.shared = false;
   state.locking = false;
+  state.submitting = false;
+  state.networkFailedOnce = false;
   $('qAll').textContent = QUESTIONS.length;
   renderQuestion();
   show('screen-quiz');
@@ -847,13 +856,19 @@ function consumeAndShow(){
     closeModal();
 
     if(!res || !res.ok){
+      // 上一次请求可能已经扣成功、只是回包丢了。这种情况直接把结果给用户。
+      if(res && res.reason === 'used_up' && state.networkFailedOnce){
+        showResultNow();
+        return;
+      }
+
       var text = (res && res.reason === 'used_up')
-        ? '这个密码的测试次数已经用完了。'
+        ? '这个测试链接已经用过了。'
         : '密码校验没有通过。';
       openModal(
         '<h3>无法生成结果</h3>'+
         '<p>'+text+'</p>'+
-        '<p class="small">请联系商家获取新的密码。</p>'+
+        '<p class="small">每个链接只能测一次，需要再测请联系商家获取新的链接。</p>'+
         '<div style="height:12px"></div>'+
         '<button class="btn" onclick="window.__backHome()">回到首页</button>'
       );
@@ -862,11 +877,12 @@ function consumeAndShow(){
     showResultNow();
   }).catch(function(){
     state.submitting = false;
+    state.networkFailedOnce = true;
     closeModal();
     openModal(
       '<h3>网络异常</h3>'+
-      '<p>没能连上服务器，本次结果还没有生成。</p>'+
-      '<p class="small">题目不用重答，检查网络后点下面重试即可。</p>'+
+      '<p>没能连上服务器，结果暂时没有生成。</p>'+
+      '<p class="small">题目不用重答，连上网络后点下面重试即可，不会多扣次数。</p>'+
       '<div style="height:12px"></div>'+
       '<button class="btn" onclick="window.__retrySubmit()">重新提交</button>'
     );
@@ -1151,6 +1167,14 @@ function buildLink(){
 function readHash(){
   var h = location.hash || '';
   if(h === '#admin'){ openAdmin(); return true; }
+
+  // 商家发货链接：#c=密码 —— 打开后自动填好密码并核验
+  var mc = h.match(/#c=([A-Za-z0-9\-]+)/);
+  if(mc){
+    prefillCode(mc[1].toUpperCase());
+    return true;
+  }
+
   var m = h.match(/#r=(\d+(?:\.\d+){6})/);
   if(m){
     var nums = m[1].split('.').map(Number);
@@ -1160,6 +1184,18 @@ function readHash(){
     return true;
   }
   return false;
+}
+
+// 发货链接自动填码
+function prefillCode(code){
+  show('screen-start');
+  $('pwd').value = code;
+  liveCheck(code);
+}
+
+// 生成发给买家的发货链接
+function buildDeliveryLink(code){
+  return location.href.split('#')[0] + '#c=' + code;
 }
 
 /* =========================================================
@@ -1235,18 +1271,56 @@ function admLoad(){
 }
 
 function admRender(){
+  var box = $('admOut');
+  box.innerHTML = '';
+
   if(!adminCodes.length){
-    $('admOut').textContent = '密码库是空的，点上面的「生成」按钮创建一批。';
+    box.textContent = '还没有密码，点上面的「生成」按钮创建一批。';
     return;
   }
-  var out = '共 ' + adminCodes.length + ' 个密码\n\n';
+
+  var usable = adminCodes.filter(function(r){ return (r.used_count || 0) < (r.max_uses || 0); }).length;
+  var head = document.createElement('div');
+  head.style.cssText = 'margin-bottom:10px;opacity:.75';
+  head.textContent = '共 ' + adminCodes.length + ' 个，其中 ' + usable + ' 个还没用过';
+  box.appendChild(head);
+
   adminCodes.forEach(function(r){
-    var max = r.max_uses || 0;
-    var used = r.used_count || 0;
+    var max = r.max_uses || 0, used = r.used_count || 0;
     var left = Math.max(max - used, 0);
-    out += r.code + '    ' + used + '/' + max + (left > 0 ? ('   剩余 ' + left) : '   已用完') + '\n';
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;'+
+                        'padding:8px 0;border-bottom:1px dotted rgba(200,162,74,.2)';
+
+    var info = document.createElement('div');
+    info.style.cssText = 'min-width:0;line-height:1.6';
+    var c1 = document.createElement('div');
+    c1.textContent = r.code;
+    c1.style.cssText = 'font-size:13px;color:#e6dac2';
+    var c2 = document.createElement('div');
+    c2.textContent = left > 0 ? '未使用' : '已用完';
+    c2.style.cssText = 'font-size:12px;opacity:.6';
+    info.appendChild(c1);
+    info.appendChild(c2);
+
+    var btn = document.createElement('button');
+    btn.className = 'btn ghost small';
+    btn.style.cssText = 'width:auto;flex:0 0 auto;padding:8px 12px;font-size:12px;letter-spacing:.06em';
+    btn.textContent = left > 0 ? '复制链接' : '已使用';
+    if(left <= 0){
+      btn.disabled = true;
+      btn.style.opacity = '.35';
+    } else {
+      btn.addEventListener('click', function(){
+        copyText(buildDeliveryLink(r.code), '发货链接已复制，发给买家即可');
+      });
+    }
+
+    row.appendChild(info);
+    row.appendChild(btn);
+    box.appendChild(row);
   });
-  $('admOut').textContent = out;
 }
 
 /* =========================================================
@@ -1524,20 +1598,29 @@ $('admGen').addEventListener('click', function(){
 
 $('admExport').addEventListener('click', function(){
   if(!adminCodes.length){ toast('列表为空，先刷新一下'); return; }
-  var lines = ['宫斗生存测试 · 测试密码清单', '导出时间：' + new Date().toLocaleString('zh-CN'), ''];
+  var lines = ['宫斗生存测试 · 发货链接清单', '导出时间：' + new Date().toLocaleString('zh-CN'), ''];
   adminCodes.forEach(function(r){
-    lines.push(r.code + '\t已用 ' + r.used_count + '/' + r.max_uses);
+    var left = Math.max((r.max_uses || 0) - (r.used_count || 0), 0);
+    lines.push(r.code + '\t' + (left > 0 ? '未使用' : '已用完') + '\t' + buildDeliveryLink(r.code));
   });
-  lines.push('', '每个密码可测试 ' + MAX_USES + ' 次。');
+  lines.push('', '每个链接只能开启一次测试，测完立即失效。');
   var blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '宫斗密码清单.txt';
+  a.download = '宫斗发货链接.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
 });
 
 $('admCopy').addEventListener('click', function(){
+  if(!adminCodes.length){ toast('列表为空，先刷新一下'); return; }
+  var usable = adminCodes.filter(function(r){ return (r.used_count || 0) < (r.max_uses || 0); });
+  if(!usable.length){ toast('没有还没用过的链接了'); return; }
+  copyText(usable.map(function(r){ return buildDeliveryLink(r.code); }).join('\n'),
+           '已复制 ' + usable.length + ' 条可用链接');
+});
+
+$('admCopyCode').addEventListener('click', function(){
   if(!adminCodes.length){ toast('列表为空，先刷新一下'); return; }
   copyText(adminCodes.map(function(r){ return r.code; }).join('\n'), '已复制全部密码');
 });
@@ -1552,6 +1635,22 @@ $('admReset').addEventListener('click', function(){
     .catch(function(err){
       toast('重置失败：' + err.message);
     });
+});
+
+$('admToOne').addEventListener('click', function(){
+  if(!confirm('把现有所有密码都改成只能测试 1 次吗？')) return;
+  fetch(SUPABASE_URL + '/rest/v1/codes?code=not.is.null', {
+    method: 'PATCH',
+    headers: Object.assign(apiHeaders(adminToken), { 'Prefer': 'return=minimal' }),
+    body: JSON.stringify({ max_uses: MAX_USES })
+  }).then(function(res){
+    if(res.status === 401 || res.status === 403) throw new Error('登录已过期，请重新登录');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    toast('已全部改为 1 次机会');
+    admLoad();
+  }).catch(function(err){
+    toast('修改失败：' + err.message);
+  });
 });
 
 $('admBack').addEventListener('click', function(){
