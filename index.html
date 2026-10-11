@@ -379,6 +379,7 @@
         <div class="btn-grid" style="margin-bottom:12px">
           <button id="admRefresh" class="btn small">刷新列表</button>
           <button id="admExport" class="btn small">导出 TXT</button>
+          <button id="admExportPool" class="btn small">导出发货链接</button>
           <button id="admCopy" class="btn ghost small">复制全部链接</button>
           <button id="admCopyCode" class="btn ghost small">复制全部密码</button>
           <button id="admReset" class="btn ghost small">重置全部次数</button>
@@ -1618,6 +1619,21 @@ $('admCopy').addEventListener('click', function(){
   if(!usable.length){ toast('没有还没用过的链接了'); return; }
   copyText(usable.map(function(r){ return buildDeliveryLink(r.code); }).join('\n'),
            '已复制 ' + usable.length + ' 条可用链接');
+});
+
+// 导出"卡密池"格式：每行一条完整链接，可直接粘进平台自动发货的卡密框
+$('admExportPool').addEventListener('click', function(){
+  if(!adminCodes.length){ toast('列表为空，先刷新一下'); return; }
+  var usable = adminCodes.filter(function(r){ return (r.used_count || 0) < (r.max_uses || 0); });
+  if(!usable.length){ toast('没有还没用过的链接了'); return; }
+  var text = usable.map(function(r){ return buildDeliveryLink(r.code); }).join('\r\n');
+  var blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '自动发货卡密_' + new Date().toISOString().slice(0,10) + '_' + usable.length + '条.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+  toast('已导出 ' + usable.length + ' 条可直接上传的链接');
 });
 
 $('admCopyCode').addEventListener('click', function(){
