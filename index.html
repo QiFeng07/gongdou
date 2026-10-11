@@ -439,6 +439,15 @@ function apiSaveResult(code, total, lv, title, dims){
   return rpc('save_result', { p_code: code, p_total: total, p_lv: lv, p_title: title, p_dims: dims });
 }
 
+// 把错误翻译成人能看懂的话
+function errText(err){
+  if(err && err.status === 404) return '服务器上找不到接口，数据库初始化脚本可能还没执行成功';
+  if(err && err.status === 401) return '接口权限不对，请检查数据库的授权设置';
+  if(err && err.status === 400) return '请求被服务器拒绝，接口参数可能不匹配';
+  if(err && err.status) return '服务器返回错误 HTTP ' + err.status;
+  return '网络异常，请检查网络后重试';
+}
+
 /* =========================================================
    2. 六个维度
    ========================================================= */
@@ -1265,8 +1274,8 @@ function liveCheck(code){
       setPwdMsg('密码不对，请核对包装上的编码');
       $('remainHint').textContent = '';
     }
-  }).catch(function(){
-    setPwdMsg('网络异常，请检查网络后重试');
+  }).catch(function(err){
+    setPwdMsg(errText(err));
     $('remainHint').textContent = '';
   });
 }
@@ -1304,8 +1313,8 @@ $('btnStart').addEventListener('click', function(){
     setPwdMsg('');
     $('remainHint').textContent = '';
     startQuiz();
-  }).catch(function(){
-    setPwdMsg('网络异常，请检查网络后重试');
+  }).catch(function(err){
+    setPwdMsg(errText(err));
   }).then(function(){
     $('btnStart').disabled = false;
   });
@@ -1400,10 +1409,29 @@ $('admLogout').addEventListener('click', function(){
 
 $('admTest').addEventListener('click', function(){
   admMsg('正在检测…');
-  apiCheckCode('GD-8F3K2M').then(function(){
+  apiCheckCode('GD-8F3K2M').then(function(r){
+    if(!r || !r.ok){
+      admMsg('接口能连上，但密码校验没有返回正常结果', false);
+      openModal(
+        '<h3>接口返回异常</h3>'+
+        '<p class="small">服务器拒绝了这次校验，返回内容如下：</p>'+
+        '<textarea class="linkout" onfocus="this.select()">'+JSON.stringify(r)+'</textarea>'+
+        '<button class="btn" onclick="window.__closeModal()">知道了</button>'
+      );
+      return;
+    }
     admMsg('连接正常，数据库已就绪', true);
   }).catch(function(err){
-    admMsg('连接失败：' + (err.status ? ('HTTP ' + err.status) : err.message));
+    admMsg('连接失败：' + errText(err));
+    openModal(
+      '<h3>连接检测失败</h3>'+
+      '<p>'+errText(err)+'</p>'+
+      '<p class="small">把下面这段完整复制给开发者，就能定位问题：</p>'+
+      '<textarea class="linkout" onfocus="this.select()">'+
+        String(err.detail || err.message || '').replace(/</g,'&lt;')+
+      '</textarea>'+
+      '<button class="btn" onclick="window.__closeModal()">知道了</button>'
+    );
   });
 });
 
