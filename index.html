@@ -347,6 +347,9 @@
       <button id="admLoginBtn" class="btn">登 录</button>
       <div style="height:10px"></div>
       <button id="admTest" class="btn ghost small">检测与服务器的连接</button>
+      <div style="height:8px"></div>
+      <button id="admDiagBtn" class="btn ghost small">网络诊断（连不上的时候点这个）</button>
+      <div id="admDiag" class="adm-out" style="display:none;max-height:240px"></div>
     </div>
 
     <div id="admPanel" style="display:none">
@@ -1434,6 +1437,71 @@ $('admTest').addEventListener('click', function(){
     );
   });
 });
+
+// 网络诊断：把失败精确定位到"网络不通"还是"权限/接口不对"
+function diagRun(){
+  var el = $('admDiag');
+  el.style.display = 'block';
+  el.textContent = '';
+  var lines = [];
+  function say(s){
+    lines.push(s);
+    el.textContent = lines.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+  function step(name, fn){
+    say('▶ ' + name);
+    return fn().then(function(res){
+      say('   OK  HTTP ' + (res && res.status !== undefined ? res.status : '?'));
+    }).catch(function(e){
+      say('   X   ' + ((e && e.name) || 'Error') + ': ' + ((e && e.message) || e));
+    });
+  }
+  function callRpc(){
+    return fetch(SUPABASE_URL + '/rest/v1/rpc/check_code', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ p_code: 'GD-8F3K2M' })
+    });
+  }
+
+  var base = SUPABASE_URL + '/rest/v1/';
+
+  step('1/4 普通 GET，不带自定义头（不会触发浏览器预检）', function(){
+    return fetch(base + '?t=' + Date.now(), { cache: 'no-store' });
+  }).then(function(){
+    return step('2/4 带 apikey 头的 GET（会触发浏览器预检）', function(){
+      return fetch(base + '?t=' + Date.now(), { cache: 'no-store', headers: { apikey: SUPABASE_ANON_KEY } });
+    });
+  }).then(function(){
+    return step('3/4 POST 调用 check_code（真实业务请求）', callRpc);
+  }).then(function(){
+    say('▶ 4/4 连续调用 5 次，看稳定性');
+    var ok = 0, notes = [];
+    var chain = Promise.resolve();
+    for(var i = 0; i < 5; i++){
+      (function(n){
+        chain = chain.then(function(){
+          return callRpc().then(function(res){
+            if(res.ok) ok++;
+            notes.push('   第' + (n + 1) + '次  HTTP ' + res.status);
+          }).catch(function(e){
+            notes.push('   第' + (n + 1) + '次  失败 ' + ((e && e.name) || ''));
+          });
+        });
+      })(i);
+    }
+    return chain.then(function(){
+      say('   成功 ' + ok + '/5');
+      notes.forEach(say);
+    });
+  }).then(function(){
+    say('');
+    say('诊断结束。把上面这段整个复制或截图发给开发者。');
+  });
+}
+
+$('admDiagBtn').addEventListener('click', diagRun);
 
 $('admRefresh').addEventListener('click', admLoad);
 
